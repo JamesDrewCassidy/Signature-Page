@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fire Alarm Inspection Acknowledgement & Signature Page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- PWA Manifest (Base64-encoded inline) -->
+  <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiRmlyZSBBbGFybSBJbnNwZWN0aW9uIiwic2hvcnRfbmFtZSI6IkFsYXJtSW5zcGVjdCIsInN0YXJ0X3VybCI6Ii4iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjZmZmZmZmIiwidGhlbWVfY29sb3IiOiIjZmZmZmZmIn0=" />
+
+  <!-- Service Worker Registration (Inline via Blob) -->
+  <script>
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE_NAME = 'alarm-inspection-v1';
+      const FILES_TO_CACHE = [
+        location.pathname, 
+      ];
+
+      self.addEventListener('install', evt => {
+        evt.waitUntil(
+          caches.open(CACHE_NAME).then(cache => {
+            return cache.addAll(FILES_TO_CACHE);
+          })
+        );
+        self.skipWaiting();
+      });
+
+      self.addEventListener('activate', evt => {
+        evt.waitUntil(
+          caches.keys().then(keyList => {
+            return Promise.all(
+              keyList.map(key => {
+                if (key !== CACHE_NAME) {
+                  return caches.delete(key);
+                }
+              })
+            );
+          })
+        );
+        self.clients.claim();
+      });
+
+      self.addEventListener('fetch', evt => {
+        evt.respondWith(
+          caches.match(evt.request).then(response => {
+            return response || fetch(evt.request);
+          })
+        );
+      });
+    `;
+
+    const blob = new Blob([swCode], { type: 'text/javascript' });
+    const swURL = URL.createObjectURL(blob);
+
+    navigator.serviceWorker.register(swURL).then(() => {
+      console.log('Service Worker Registered');
+    }).catch(err => {
+      console.log('Service Worker Registration Failed', err);
+    });
+  }
+  </script>
+
+  <style>
+    /* Basic resets */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      padding: 10px;
+      color: #333;
+    }
+
+    /* Input focus style for polish */
+    input:focus, select:focus {
+      outline: none;
+      border-color: #007BFF;
+      box-shadow: 0 0 3px rgba(0,123,255,0.5);
+    }
+
+    /* Hide the "print" version by default on screen, show only in print */
+    #printView {
+      display: none;
+    }
+    @media print {
+      @page {
+        margin: 0;
+      }
+      #mainContainer {
+        display: none !important;
+      }
+      #printView {
+        display: block !important;
+      }
+      body {
+        margin: 0;
+        padding: 10px;
+      }
+      .btn {
+        display: none !important;
+      }
+    }
+
+    /* Container with form input / signature modals */
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header img {
+      width: 100%;
+      max-width: 600px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: 20px;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 8px;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #ccc;
+      margin: 15px 0;
+    }
+
+    /* Buttons */
+    .button-row {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .btn {
+      display: inline-block;
+      margin: 6px;
+      padding: 8px 16px;
+      background: #007BFF;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s ease;
+    }
+    .btn:hover {
+      background: #0056b3;
+    }
+
+    /* Interactive signature area */
+    .signature-line-container {
+      margin-top: 10px;
+    }
+    .signature-line {
+      position: relative;
+      cursor: pointer;
+      padding-bottom: 40px;
+      margin-top: 15px;
+      margin-bottom: 15px;
+    }
+    .signature-line:hover {
+      background-color: #f5f5f5;
+    }
+    .signature-line::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 8px;
+      border-bottom: 1px solid #999;
+    }
+    .signature-line span {
+      position: absolute;
+      left: 10px;
+      bottom: 15px;
+      color: #666;
+      font-style: italic;
+      font-size: 14px;
+      pointer-events: none;
+    }
+    .signature-line img {
+      max-height: 70px;
+      max-width: 100%;
+      display: block;
+      position: relative;
+      margin-left: 10px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Modal for signature drawing with fade transition */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .modal-content {
+      position: relative;
+      background-color: #fff;
+      margin: 5% auto;
+      width: 95%;
+      max-width: 600px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header, .modal-footer {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    .modal-header h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+    .modal-body {
+      flex: 1 1 auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-footer {
+      border-top: 1px solid #ddd;
+      border-bottom: none;
+      display: flex;
+      justify-content: flex-end;
+    }
+    canvas {
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      touch-action: none;
+      width: 100%;
+      max-width: 500px;
+      height: 200px;
+    }
+
+    /* PRINT VIEW STYLES */
+    #printView {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    #printView .logo-area {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    #printView .logo-area img {
+      max-width: 600px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    #printView h2 {
+      font-size: 18px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .line-block {
+      margin: 20px 0;
+    }
+    .line-label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .line-value {
+      display: block;
+      border-bottom: 1px solid #000;
+      padding: 2px 6px;
+      margin-bottom: 10px;
+    }
+    /* For signature in print, label on one line and image directly below */
+    #printView .signature-image {
+      display: block;
+      margin: 10px 0 0 0;
+      max-width: 300px;
+      max-height: 100px;
+    }
+  </style>
+</head>
+<body>
+<!-- Main Container: Visible on screen, hidden on print -->
+<div id="mainContainer">
+  <div class="container">
+    <div class="header">
+      <img 
+        src="https://static.wixstatic.com/media/8111ed_9942c72b39814d818a2074b091ed8956~mv2.png/v1/fill/w_284,h_122,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/8111ed_9942c72b39814d818a2074b091ed8956~mv2.png" 
+        alt="Company Logo" 
+      />
+    </div>
+    <h1>Fire Alarm Inspection Acknowledgement & Signature Page</h1>
+
+    <!-- CUSTOMER SECTION -->
+    <div id="customerSection">
+      <h2>Customer Information</h2>
+      <label for="customerName">Customer Name:</label>
+      <input type="text" id="customerName" placeholder="Enter Customer Name" />
+
+      <label for="customerDate">Date:</label>
+      <input type="date" id="customerDate" />
+
+      <div class="signature-line-container">
+        <label for="customerSignatureLine">Customer Signature:</label>
+        <div class="signature-line" id="customerSignatureLine">
+          <span id="customerSignaturePlaceholder">Tap to Sign</span>
+          <img id="customerSignatureImg" class="hidden" alt="Customer Signature" />
+        </div>
+      </div>
+    </div>
+
+    <hr />
+
+    <!-- INSPECTOR SECTION -->
+    <div id="inspectorSection">
+      <h2>Inspector Information</h2>
+      <label for="inspectorSelect">Inspector (Name &amp; Cert Info):</label>
+      <select id="inspectorSelect">
+        <option value="">Select Inspector</option>
+        <option value="David McKaig (36946, ICC/Commercial Fire Alarm)">David McKaig (36946, ICC/Commercial Fire Alarm)</option>
+        <option value="Graysen Willer (36946, ICC/Commercial Fire Alarm)">Graysen Willer (36946, ICC/Commercial Fire Alarm)</option>
+        <option value="Stewart Reed (36946, ICC/Commercial Fire Alarm)">Stewart Reed (36946, ICC/Commercial Fire Alarm)</option>
+      </select>
+
+      <label for="inspectorDate">Date:</label>
+      <input type="date" id="inspectorDate" />
+
+      <div class="signature-line-container">
+        <label for="inspectorSignatureLine">Inspector Signature:</label>
+        <div class="signature-line" id="inspectorSignatureLine">
+          <span id="inspectorSignaturePlaceholder">Tap to Sign</span>
+          <img id="inspectorSignatureImg" class="hidden" alt="Inspector Signature" />
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button class="btn" id="saveInspectorInfo">Save Inspector Info</button>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button class="btn" id="printPageBtn">Print / Save as PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- Print View: Hidden on screen, shown on print -->
+<div id="printView">
+  <div class="logo-area">
+    <img
+      src="https://static.wixstatic.com/media/8111ed_9942c72b39814d818a2074b091ed8956~mv2.png/v1/fill/w_284,h_122,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/8111ed_9942c72b39814d818a2074b091ed8956~mv2.png" 
+      alt="Company Logo"
+    />
+  </div>
+  <h2>Fire Alarm Inspection Acknowledgement &amp; Signature Page</h2>
+
+  <!-- Customer Details -->
+  <div class="line-block">
+    <span class="line-label">Customer Name:</span>
+    <span class="line-value" id="printCustomerName">&nbsp;</span>
+  </div>
+  <div class="line-block">
+    <span class="line-label">Date:</span>
+    <span class="line-value" id="printCustomerDate">&nbsp;</span>
+  </div>
+  <div class="line-block">
+    <span class="line-label">Signature:</span>
+  </div>
+  <div class="line-block">
+    <img class="signature-image" id="printCustomerSignature" src="" alt="Customer Signature"/>
+  </div>
+
+  <hr/>
+
+  <!-- Inspector Details -->
+  <div class="line-block">
+    <span class="line-label">Inspector:</span>
+    <span class="line-value" id="printInspectorName">&nbsp;</span>
+  </div>
+  <div class="line-block">
+    <span class="line-label">Date:</span>
+    <span class="line-value" id="printInspectorDate">&nbsp;</span>
+  </div>
+  <div class="line-block">
+    <span class="line-label">Signature:</span>
+  </div>
+  <div class="line-block">
+    <img class="signature-image" id="printInspectorSignature" src="" alt="Inspector Signature"/>
+  </div>
+</div>
+
+<!-- CUSTOMER SIGNATURE MODAL -->
+<div class="modal" id="customerModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Sign (Customer)</h2>
+    </div>
+    <div class="modal-body">
+      <canvas id="signatureCanvasCustomer"></canvas>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="clearCustomerCanvas">Clear</button>
+      <button class="btn" id="cancelCustomerSignature">Cancel</button>
+      <button class="btn" id="saveCustomerSignature">Accept</button>
+    </div>
+  </div>
+</div>
+
+<!-- INSPECTOR SIGNATURE MODAL -->
+<div class="modal" id="inspectorModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Sign (Inspector)</h2>
+    </div>
+    <div class="modal-body">
+      <canvas id="signatureCanvasInspector"></canvas>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="clearInspectorCanvas">Clear</button>
+      <button class="btn" id="cancelInspectorSignature">Cancel</button>
+      <button class="btn" id="saveInspectorSignature">Accept</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ----------------------------------------------------------------
+  // GLOBALS & UTILITY
+  // ----------------------------------------------------------------
+  let isDrawing = false;
+  let x = 0;
+  let y = 0;
+
+  // Helper: Adjust canvas internal size to match its displayed size.
+  function resizeCanvas(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  }
+
+  // Updated pointer function with scaling factors
+  function getPointerPosition(evt, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (evt.touches && evt.touches.length > 0) {
+      clientX = evt.touches[0].clientX;
+      clientY = evt.touches[0].clientY;
+    } else {
+      clientX = evt.clientX;
+      clientY = evt.clientY;
+    }
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  }
+
+  function startDrawing(evt, ctx, canvas) {
+    isDrawing = true;
+    const pos = getPointerPosition(evt, canvas);
+    x = pos.x;
+    y = pos.y;
+  }
+
+  function draw(evt, ctx, canvas) {
+    if (!isDrawing) return;
+    const pos = getPointerPosition(evt, canvas);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    x = pos.x;
+    y = pos.y;
+  }
+
+  function stopDrawing() {
+    isDrawing = false;
+  }
+
+  function setupCanvasInteractions(canvas, ctx) {
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#000';
+
+    // Mouse events
+    canvas.addEventListener('mousedown', e => startDrawing(e, ctx, canvas));
+    canvas.addEventListener('mousemove', e => draw(e, ctx, canvas));
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // Touch events
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      startDrawing(e, ctx, canvas);
+    }, { passive: false });
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      draw(e, ctx, canvas);
+    }, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing);
+  }
+
+  // Helper functions for modal fade transitions
+  function showModal(modal) {
+    modal.style.display = 'block';
+    setTimeout(() => { modal.style.opacity = '1'; }, 10);
+  }
+  function hideModal(modal) {
+    modal.style.opacity = '0';
+    setTimeout(() => { modal.style.display = 'none'; }, 300);
+  }
+
+  // ----------------------------------------------------------------
+  // Date Formatting Helper
+  // Converts a YYYY-MM-DD string into "Month Day, Year" format.
+  function formatDate(inputDate) {
+    if (!inputDate) return "";
+    const date = new Date(inputDate);
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  }
+
+  // ----------------------------------------------------------------
+  // Initialize canvases
+  // ----------------------------------------------------------------
+  const signatureCanvasCustomer = document.getElementById('signatureCanvasCustomer');
+  const ctxCustomer = signatureCanvasCustomer.getContext('2d');
+  const signatureCanvasInspector = document.getElementById('signatureCanvasInspector');
+  const ctxInspector = signatureCanvasInspector.getContext('2d');
+
+  setupCanvasInteractions(signatureCanvasCustomer, ctxCustomer);
+  setupCanvasInteractions(signatureCanvasInspector, ctxInspector);
+
+  // ----------------------------------------------------------------
+  // CUSTOMER SIGNATURE LOGIC
+  // ----------------------------------------------------------------
+  const customerModal = document.getElementById('customerModal');
+  const customerSignatureLine = document.getElementById('customerSignatureLine');
+  const customerSignatureImg = document.getElementById('customerSignatureImg');
+  const customerSignaturePlaceholder = document.getElementById('customerSignaturePlaceholder');
+  const clearCustomerCanvasBtn = document.getElementById('clearCustomerCanvas');
+  const cancelCustomerSignatureBtn = document.getElementById('cancelCustomerSignature');
+  const saveCustomerSignatureBtn = document.getElementById('saveCustomerSignature');
+
+  customerSignatureLine.addEventListener('click', () => {
+    showModal(customerModal);
+    resizeCanvas(signatureCanvasCustomer);
+  });
+  clearCustomerCanvasBtn.addEventListener('click', () => {
+    ctxCustomer.clearRect(0, 0, signatureCanvasCustomer.width, signatureCanvasCustomer.height);
+  });
+  cancelCustomerSignatureBtn.addEventListener('click', () => {
+    ctxCustomer.clearRect(0, 0, signatureCanvasCustomer.width, signatureCanvasCustomer.height);
+    hideModal(customerModal);
+  });
+  saveCustomerSignatureBtn.addEventListener('click', () => {
+    const dataURL = signatureCanvasCustomer.toDataURL();
+    customerSignatureImg.src = dataURL;
+    customerSignatureImg.classList.remove('hidden');
+    customerSignaturePlaceholder.classList.add('hidden');
+    hideModal(customerModal);
+  });
+
+  // ----------------------------------------------------------------
+  // INSPECTOR SIGNATURE LOGIC
+  // ----------------------------------------------------------------
+  const inspectorModal = document.getElementById('inspectorModal');
+  const inspectorSignatureLine = document.getElementById('inspectorSignatureLine');
+  const inspectorSignatureImg = document.getElementById('inspectorSignatureImg');
+  const inspectorSignaturePlaceholder = document.getElementById('inspectorSignaturePlaceholder');
+  const clearInspectorCanvasBtn = document.getElementById('clearInspectorCanvas');
+  const cancelInspectorSignatureBtn = document.getElementById('cancelInspectorSignature');
+  const saveInspectorSignatureBtn = document.getElementById('saveInspectorSignature');
+
+  inspectorSignatureLine.addEventListener('click', () => {
+    showModal(inspectorModal);
+    resizeCanvas(signatureCanvasInspector);
+  });
+  clearInspectorCanvasBtn.addEventListener('click', () => {
+    ctxInspector.clearRect(0, 0, signatureCanvasInspector.width, signatureCanvasInspector.height);
+  });
+  cancelInspectorSignatureBtn.addEventListener('click', () => {
+    ctxInspector.clearRect(0, 0, signatureCanvasInspector.width, signatureCanvasInspector.height);
+    hideModal(inspectorModal);
+  });
+  saveInspectorSignatureBtn.addEventListener('click', () => {
+    const dataURL = signatureCanvasInspector.toDataURL();
+    inspectorSignatureImg.src = dataURL;
+    inspectorSignatureImg.classList.remove('hidden');
+    inspectorSignaturePlaceholder.classList.add('hidden');
+    hideModal(inspectorModal);
+  });
+
+  // ----------------------------------------------------------------
+  // LOCAL STORAGE FOR INSPECTOR (Save only name and signature)
+  // ----------------------------------------------------------------
+  const inspectorSelect = document.getElementById('inspectorSelect');
+  const inspectorDateInput = document.getElementById('inspectorDate');
+  const saveInspectorInfoBtn = document.getElementById('saveInspectorInfo');
+
+  saveInspectorInfoBtn.addEventListener('click', () => {
+    const inspectorChoice = inspectorSelect.value || '';
+    let signatureData = '';
+    if (!inspectorSignatureImg.classList.contains('hidden')) {
+      signatureData = inspectorSignatureImg.src; 
+    }
+    localStorage.setItem('inspectorChoice', inspectorChoice);
+    localStorage.setItem('inspectorSignature', signatureData);
+    alert('Inspector information saved locally!');
+  });
+
+  window.addEventListener('load', () => {
+    const savedInspectorChoice = localStorage.getItem('inspectorChoice');
+    const savedInspectorSignature = localStorage.getItem('inspectorSignature');
+
+    if (savedInspectorChoice) {
+      inspectorSelect.value = savedInspectorChoice;
+    }
+    if (savedInspectorSignature) {
+      inspectorSignatureImg.src = savedInspectorSignature;
+      inspectorSignatureImg.classList.remove('hidden');
+      inspectorSignaturePlaceholder.classList.add('hidden');
+    }
+  });
+
+  // ----------------------------------------------------------------
+  // PRINT / SAVE AS PDF
+  // ----------------------------------------------------------------
+  const customerNameInput = document.getElementById('customerName');
+  const customerDateInput = document.getElementById('customerDate');
+  const printCustomerName = document.getElementById('printCustomerName');
+  const printCustomerDate = document.getElementById('printCustomerDate');
+  const printCustomerSignature = document.getElementById('printCustomerSignature');
+  const printInspectorName = document.getElementById('printInspectorName');
+  const printInspectorDate = document.getElementById('printInspectorDate');
+  const printInspectorSignature = document.getElementById('printInspectorSignature');
+  const printPageBtn = document.getElementById('printPageBtn');
+
+  printPageBtn.addEventListener('click', () => {
+    printCustomerName.textContent = customerNameInput.value || "";
+    // Format date to "Month Day, Year"
+    printCustomerDate.textContent = customerDateInput.value ? formatDate(customerDateInput.value) : "";
+    
+    if (!customerSignatureImg.classList.contains('hidden')) {
+      printCustomerSignature.src = customerSignatureImg.src;
+      printCustomerSignature.style.display = "block";
+    } else {
+      printCustomerSignature.src = "";
+      printCustomerSignature.style.display = "none";
+    }
+
+    printInspectorName.textContent = inspectorSelect.value || "";
+    printInspectorDate.textContent = inspectorDateInput.value ? formatDate(inspectorDateInput.value) : "";
+
+    if (!inspectorSignatureImg.classList.contains('hidden')) {
+      printInspectorSignature.src = inspectorSignatureImg.src;
+      printInspectorSignature.style.display = "block";
+    } else {
+      printInspectorSignature.src = "";
+      printInspectorSignature.style.display = "none";
+    }
+
+    window.print();
+  });
+</script>
+</body>
+</html>
