@@ -82,30 +82,7 @@
       box-shadow: 0 0 3px rgba(0,123,255,0.5);
     }
 
-    /* Hide the "print" version by default on screen, show only in print */
-    #printView {
-      display: none;
-    }
-    @media print {
-      @page {
-        margin: 0;
-      }
-      #mainContainer {
-        display: none !important;
-      }
-      #printView {
-        display: block !important;
-      }
-      body {
-        margin: 0;
-        padding: 10px;
-      }
-      .btn {
-        display: none !important;
-      }
-    }
-
-    /* Container with form input / signature modals */
+    /* Container styles for the on-screen form */
     .container {
       max-width: 600px;
       margin: auto;
@@ -117,7 +94,7 @@
 
     .header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
     .header img {
       width: 100%;
@@ -133,9 +110,9 @@
       text-align: center;
     }
     h2 {
+      margin-top: 20px;
       margin-bottom: 8px;
       font-size: 16px;
-      margin-top: 20px;
     }
 
     label {
@@ -282,49 +259,73 @@
     }
 
     /* PRINT VIEW STYLES */
+    /* The print view has been adjusted to reduce margins, padding, and font sizes so everything fits on one page */
     #printView {
-      max-width: 700px;
-      margin: auto;
+      display: none;
+      max-width: 100%;
+      margin: 0 auto;
       background: #fff;
-      padding: 20px;
-      border-radius: 8px;
+      padding: 5px 10px;
+      border-radius: 0;
     }
     #printView .logo-area {
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: 5px;
     }
     #printView .logo-area img {
-      max-width: 600px;
+      max-width: 100%;
       width: 100%;
       height: auto;
       display: block;
       margin: 0 auto;
     }
     #printView h2 {
-      font-size: 18px;
-      margin-bottom: 10px;
+      font-size: 16px;
+      margin: 5px 0;
       text-align: center;
     }
     .line-block {
-      margin: 20px 0;
+      margin: 5px 0;
     }
     .line-label {
       font-weight: bold;
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
+      font-size: 12px;
     }
     .line-value {
       display: block;
       border-bottom: 1px solid #000;
-      padding: 2px 6px;
-      margin-bottom: 10px;
+      padding: 2px 4px;
+      margin-bottom: 5px;
+      font-size: 12px;
     }
-    /* For signature in print, label on one line and image directly below */
+    /* For signature in print, image directly below the label */
     #printView .signature-image {
       display: block;
-      margin: 10px 0 0 0;
+      margin: 5px 0 0 0;
       max-width: 300px;
       max-height: 100px;
+    }
+    @page {
+      size: A4 portrait;
+      margin: 5mm;
+    }
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+        font-size: 12px;
+      }
+      #mainContainer {
+        display: none !important;
+      }
+      #printView {
+        display: block !important;
+      }
+      .btn {
+        display: none !important;
+      }
     }
   </style>
 </head>
@@ -343,6 +344,9 @@
     <!-- CUSTOMER SECTION -->
     <div id="customerSection">
       <h2>Customer Information</h2>
+      <label for="customerCompany">Company Name:</label>
+      <input type="text" id="customerCompany" placeholder="Enter Company Name" />
+
       <label for="customerName">Customer Name:</label>
       <input type="text" id="customerName" placeholder="Enter Customer Name" />
 
@@ -363,6 +367,9 @@
     <!-- INSPECTOR SECTION -->
     <div id="inspectorSection">
       <h2>Inspector Information</h2>
+      <label for="inspectorCompany">Company Name:</label>
+      <input type="text" id="inspectorCompany" value="Omni Technologies, LLC" readonly />
+
       <label for="inspectorSelect">Inspector (Name &amp; Cert Info):</label>
       <select id="inspectorSelect">
         <option value="">Select Inspector</option>
@@ -405,6 +412,10 @@
 
   <!-- Customer Details -->
   <div class="line-block">
+    <span class="line-label">Customer Company:</span>
+    <span class="line-value" id="printCustomerCompany">&nbsp;</span>
+  </div>
+  <div class="line-block">
     <span class="line-label">Customer Name:</span>
     <span class="line-value" id="printCustomerName">&nbsp;</span>
   </div>
@@ -422,6 +433,10 @@
   <hr/>
 
   <!-- Inspector Details -->
+  <div class="line-block">
+    <span class="line-label">Inspector Company:</span>
+    <span class="line-value" id="printInspectorCompany">Omni Technologies, LLC</span>
+  </div>
   <div class="line-block">
     <span class="line-label">Inspector:</span>
     <span class="line-value" id="printInspectorName">&nbsp;</span>
@@ -679,16 +694,21 @@
   // PRINT / SAVE AS PDF
   // ----------------------------------------------------------------
   const customerNameInput = document.getElementById('customerName');
+  const customerCompanyInput = document.getElementById('customerCompany');
   const customerDateInput = document.getElementById('customerDate');
   const printCustomerName = document.getElementById('printCustomerName');
+  const printCustomerCompany = document.getElementById('printCustomerCompany');
   const printCustomerDate = document.getElementById('printCustomerDate');
   const printCustomerSignature = document.getElementById('printCustomerSignature');
   const printInspectorName = document.getElementById('printInspectorName');
   const printInspectorDate = document.getElementById('printInspectorDate');
   const printInspectorSignature = document.getElementById('printInspectorSignature');
+  const inspectorCompanyInput = document.getElementById('inspectorCompany');
+  const printInspectorCompany = document.getElementById('printInspectorCompany');
   const printPageBtn = document.getElementById('printPageBtn');
 
   printPageBtn.addEventListener('click', () => {
+    printCustomerCompany.textContent = customerCompanyInput.value || "";
     printCustomerName.textContent = customerNameInput.value || "";
     // Format date to "Month Day, Year"
     printCustomerDate.textContent = customerDateInput.value ? formatDate(customerDateInput.value) : "";
@@ -701,6 +721,7 @@
       printCustomerSignature.style.display = "none";
     }
 
+    printInspectorCompany.textContent = inspectorCompanyInput.value;
     printInspectorName.textContent = inspectorSelect.value || "";
     printInspectorDate.textContent = inspectorDateInput.value ? formatDate(inspectorDateInput.value) : "";
 
