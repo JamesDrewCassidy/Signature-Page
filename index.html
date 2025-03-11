@@ -347,17 +347,17 @@
       <label for="customerCompany">Company Name:</label>
       <input type="text" id="customerCompany" placeholder="Enter Company Name" />
 
-      <label for="customerName">Customer Name:</label>
-      <input type="text" id="customerName" placeholder="Enter Customer Name" />
+      <label for="customerName">Company Representative:</label>
+      <input type="text" id="customerName" placeholder="Enter Company Representative" />
 
       <label for="customerDate">Date:</label>
       <input type="date" id="customerDate" />
 
       <div class="signature-line-container">
-        <label for="customerSignatureLine">Customer Signature:</label>
+        <label for="customerSignatureLine">Company Representative Signature:</label>
         <div class="signature-line" id="customerSignatureLine">
           <span id="customerSignaturePlaceholder">Tap to Sign</span>
-          <img id="customerSignatureImg" class="hidden" alt="Customer Signature" />
+          <img id="customerSignatureImg" class="hidden" alt="Company Representative Signature" />
         </div>
       </div>
     </div>
@@ -416,7 +416,7 @@
     <span class="line-value" id="printCustomerCompany">&nbsp;</span>
   </div>
   <div class="line-block">
-    <span class="line-label">Customer Name:</span>
+    <span class="line-label">Company Representative:</span>
     <span class="line-value" id="printCustomerName">&nbsp;</span>
   </div>
   <div class="line-block">
@@ -424,10 +424,10 @@
     <span class="line-value" id="printCustomerDate">&nbsp;</span>
   </div>
   <div class="line-block">
-    <span class="line-label">Signature:</span>
+    <span class="line-label">Company Representative Signature:</span>
   </div>
   <div class="line-block">
-    <img class="signature-image" id="printCustomerSignature" src="" alt="Customer Signature"/>
+    <img class="signature-image" id="printCustomerSignature" src="" alt="Company Representative Signature"/>
   </div>
 
   <hr/>
@@ -435,7 +435,7 @@
   <!-- Inspector Details -->
   <div class="line-block">
     <span class="line-label">Inspector Company:</span>
-    <span class="line-value" id="printInspectorCompany">Omni Technologies, LLC</span>
+    <span class="line-value" id="printInspectorCompany">Omni Technologies, LLC.</span>
   </div>
   <div class="line-block">
     <span class="line-label">Inspector:</span>
@@ -457,7 +457,7 @@
 <div class="modal" id="customerModal">
   <div class="modal-content">
     <div class="modal-header">
-      <h2>Sign (Customer)</h2>
+      <h2>Sign (Company Representative)</h2>
     </div>
     <div class="modal-body">
       <canvas id="signatureCanvasCustomer"></canvas>
