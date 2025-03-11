@@ -97,16 +97,18 @@
       margin-bottom: 15px;
     }
     .header img {
-      width: 100%;
-      max-width: 600px;
+      /* Logo scaled down to a maximum width of 400px */
+      width: auto;
+      max-width: 400px;
       height: auto;
       display: block;
       margin: 0 auto;
     }
 
+    /* Title updated to be slightly larger */
     h1 {
       margin-bottom: 10px;
-      font-size: 20px;
+      font-size: 24px;
       text-align: center;
     }
     h2 {
@@ -273,8 +275,9 @@
       margin-bottom: 5px;
     }
     #printView .logo-area img {
-      max-width: 100%;
-      width: 100%;
+      /* Print view logo is also scaled down */
+      max-width: 400px;
+      width: auto;
       height: auto;
       display: block;
       margin: 0 auto;
@@ -435,7 +438,7 @@
   <!-- Inspector Details -->
   <div class="line-block">
     <span class="line-label">Inspector Company:</span>
-    <span class="line-value" id="printInspectorCompany">Omni Technologies, LLC.</span>
+    <span class="line-value" id="printInspectorCompany">Omni Technologies, LLC</span>
   </div>
   <div class="line-block">
     <span class="line-label">Inspector:</span>
@@ -580,9 +583,10 @@
   // ----------------------------------------------------------------
   // Date Formatting Helper
   // Converts a YYYY-MM-DD string into "Month Day, Year" format.
+  // Appending "T00:00:00" forces local time interpretation.
   function formatDate(inputDate) {
     if (!inputDate) return "";
-    const date = new Date(inputDate);
+    const date = new Date(inputDate + "T00:00:00");
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
   }
