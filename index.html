@@ -20,13 +20,19 @@
           self.skipWaiting();
         });
         self.addEventListener('activate', evt => {
-          evt.waitUntil(caches.keys().then(keyList => Promise.all(
-            keyList.map(key => { if (key !== CACHE_NAME) return caches.delete(key); })
-          )));
+          evt.waitUntil(
+            caches.keys().then(keyList =>
+              Promise.all(keyList.map(key => {
+                if (key !== CACHE_NAME) return caches.delete(key);
+              }))
+            )
+          );
           self.clients.claim();
         });
         self.addEventListener('fetch', evt => {
-          evt.respondWith(caches.match(evt.request).then(response => response || fetch(evt.request)));
+          evt.respondWith(
+            caches.match(evt.request).then(response => response || fetch(evt.request))
+          );
         });
       `;
       const blob = new Blob([swCode], { type: 'text/javascript' });
@@ -55,6 +61,7 @@
       border-color: #007BFF;
       box-shadow: 0 0 3px rgba(0,123,255,0.5);
     }
+
     /* Main container styling */
     .container {
       max-width: 600px;
@@ -105,6 +112,7 @@
       border-top: 1px solid #ccc;
       margin: 15px 0;
     }
+
     /* Buttons */
     .button-row {
       margin-top: 15px;
@@ -125,14 +133,15 @@
     .btn:hover {
       background: #0056b3;
     }
-    /* Signature line area */
+
+    /* Signature line area (with extra vertical space) */
     .signature-line-container {
       margin-top: 10px;
     }
     .signature-line {
       position: relative;
       cursor: pointer;
-      padding-bottom: 40px;
+      padding-bottom: 60px; /* increased for easier signing */
       margin: 15px 0;
     }
     .signature-line:hover {
@@ -143,13 +152,13 @@
       position: absolute;
       left: 0;
       right: 0;
-      bottom: 8px;
+      bottom: 10px;
       border-bottom: 1px solid #999;
     }
     .signature-line span {
       position: absolute;
       left: 10px;
-      bottom: 15px;
+      bottom: 18px;
       color: #666;
       font-style: italic;
       font-size: 14px;
@@ -157,13 +166,14 @@
     }
     .signature-line img {
       max-height: 70px;
-      max-width: 100%;
+      max-width: 90%;
       display: block;
       margin-left: 10px;
     }
     .hidden {
       display: none !important;
     }
+
     /* Modal styles */
     .modal {
       display: none;
@@ -219,6 +229,7 @@
       max-width: 500px;
       height: 200px;
     }
+
     /* Print View Styles */
     #printView {
       display: none;
@@ -260,6 +271,7 @@
       margin-bottom: 5px;
       font-size: 12px;
     }
+
     /* Reserved signature area */
     #printView .signature-image {
       display: block;
@@ -269,6 +281,7 @@
       min-height: 100px;
       border-bottom: 1px solid #000;
     }
+
     @page {
       size: A4 portrait;
       margin: 5mm;
@@ -319,7 +332,7 @@
         <label for="customerSignatureLine">Company Representative Signature:</label>
         <div class="signature-line" id="customerSignatureLine">
           <span id="customerSignaturePlaceholder">Tap to Sign</span>
-          <img id="customerSignatureImg" class="hidden" alt="Company Representative Signature" />
+          <img id="customerSignatureImg" class="hidden" alt="" />
         </div>
       </div>
     </div>
@@ -347,7 +360,7 @@
         <label for="inspectorSignatureLine">Inspector Signature:</label>
         <div class="signature-line" id="inspectorSignatureLine">
           <span id="inspectorSignaturePlaceholder">Tap to Sign</span>
-          <img id="inspectorSignatureImg" class="hidden" alt="Inspector Signature" />
+          <img id="inspectorSignatureImg" class="hidden" alt="" />
         </div>
       </div>
 
@@ -372,7 +385,7 @@
   </div>
   <h2>Fire Alarm Inspection Acknowledgement &amp; Signature Page</h2>
 
-  <!-- Customer Details (Updated Label) -->
+  <!-- Customer Details -->
   <div class="line-block">
     <span class="line-label">Company Name:</span>
     <span class="line-value" id="printCustomerCompany">&nbsp;</span>
@@ -386,10 +399,11 @@
     <span class="line-value" id="printCustomerDate">&nbsp;</span>
   </div>
   <div class="line-block">
-    <span class="line-label">Company Representative Signature:</span>
+    <span class="line-label">Signature:</span>
   </div>
   <div class="line-block">
-    <img class="signature-image" id="printCustomerSignature" src="" alt="Company Representative Signature"/>
+    <!-- alt="" so no extra icon or text is displayed -->
+    <img class="signature-image" id="printCustomerSignature" src="" alt=""/>
   </div>
 
   <hr/>
@@ -411,7 +425,7 @@
     <span class="line-label">Signature:</span>
   </div>
   <div class="line-block">
-    <img class="signature-image" id="printInspectorSignature" src="" alt="Inspector Signature"/>
+    <img class="signature-image" id="printInspectorSignature" src="" alt=""/>
   </div>
 </div>
 
@@ -450,229 +464,290 @@
 </div>
 
 <script>
-  "use strict";
-  // ----------------------------------------------------------------
-  // GLOBAL VARIABLES & UTILITY FUNCTIONS
-  // ----------------------------------------------------------------
-  let isDrawing = false, x = 0, y = 0;
+"use strict";
 
-  // Resize canvas to match its display size
-  function resizeCanvas(canvas) {
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+// ----------------------------------------------------------------
+// GLOBAL VARIABLES & UTILITY FUNCTIONS
+// ----------------------------------------------------------------
+let isDrawing = false, x = 0, y = 0;
+
+// Resize canvas to match its display size
+function resizeCanvas(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+}
+
+// Recalculate pointer coordinates with scaling
+function getPointerPosition(evt, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  let clientX, clientY;
+  if (evt.touches && evt.touches.length > 0) {
+    clientX = evt.touches[0].clientX;
+    clientY = evt.touches[0].clientY;
+  } else {
+    clientX = evt.clientX;
+    clientY = evt.clientY;
   }
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+}
 
-  // Recalculate pointer coordinates with scaling
-  function getPointerPosition(evt, canvas) {
-    const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-    if (evt.touches && evt.touches.length > 0) {
-      clientX = evt.touches[0].clientX;
-      clientY = evt.touches[0].clientY;
-    } else {
-      clientX = evt.clientX;
-      clientY = evt.clientY;
-    }
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+function startDrawing(evt, ctx, canvas) {
+  isDrawing = true;
+  const pos = getPointerPosition(evt, canvas);
+  x = pos.x;
+  y = pos.y;
+}
+
+function draw(evt, ctx, canvas) {
+  if (!isDrawing) return;
+  const pos = getPointerPosition(evt, canvas);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(pos.x, pos.y);
+  ctx.stroke();
+  x = pos.x;
+  y = pos.y;
+}
+
+function stopDrawing() {
+  isDrawing = false;
+}
+
+function setupCanvasInteractions(canvas, ctx) {
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#000';
+
+  // Mouse events
+  canvas.addEventListener('mousedown', e => startDrawing(e, ctx, canvas));
+  canvas.addEventListener('mousemove', e => draw(e, ctx, canvas));
+  canvas.addEventListener('mouseup', stopDrawing);
+  canvas.addEventListener('mouseout', stopDrawing);
+
+  // Touch events
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    startDrawing(e, ctx, canvas);
+  }, { passive: false });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    draw(e, ctx, canvas);
+  }, { passive: false });
+  canvas.addEventListener('touchend', stopDrawing);
+}
+
+// Modal handling
+function showModal(modal) {
+  modal.style.display = 'block';
+  setTimeout(() => { modal.style.opacity = '1'; }, 10);
+  document.body.style.overflow = 'hidden'; // Prevent background scroll
+}
+function hideModal(modal) {
+  modal.style.opacity = '0';
+  setTimeout(() => {
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+  }, 300);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === "Escape") {
+    hideModal(document.getElementById('customerModal'));
+    hideModal(document.getElementById('inspectorModal'));
   }
+});
 
-  function startDrawing(evt, ctx, canvas) {
-    isDrawing = true;
-    const pos = getPointerPosition(evt, canvas);
-    x = pos.x;
-    y = pos.y;
+// Format date from YYYY-MM-DD to "Month Day, Year"
+function formatDate(inputDate) {
+  if (!inputDate) return "";
+  const date = new Date(inputDate + "T00:00:00");
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+// ----------------------------------------------------------------
+// Initialize signature canvases
+// ----------------------------------------------------------------
+const signatureCanvasCustomer = document.getElementById('signatureCanvasCustomer'),
+      ctxCustomer = signatureCanvasCustomer.getContext('2d'),
+      signatureCanvasInspector = document.getElementById('signatureCanvasInspector'),
+      ctxInspector = signatureCanvasInspector.getContext('2d');
+
+setupCanvasInteractions(signatureCanvasCustomer, ctxCustomer);
+setupCanvasInteractions(signatureCanvasInspector, ctxInspector);
+
+// Re-adjust canvases on window resize for responsiveness
+window.addEventListener('resize', () => {
+  resizeCanvas(signatureCanvasCustomer);
+  resizeCanvas(signatureCanvasInspector);
+});
+
+// ----------------------------------------------------------------
+// CUSTOMER SIGNATURE LOGIC (with localStorage)
+// ----------------------------------------------------------------
+const customerModal = document.getElementById('customerModal'),
+      customerSignatureLine = document.getElementById('customerSignatureLine'),
+      customerSignatureImg = document.getElementById('customerSignatureImg'),
+      customerSignaturePlaceholder = document.getElementById('customerSignaturePlaceholder'),
+      clearCustomerCanvasBtn = document.getElementById('clearCustomerCanvas'),
+      cancelCustomerSignatureBtn = document.getElementById('cancelCustomerSignature'),
+      saveCustomerSignatureBtn = document.getElementById('saveCustomerSignature');
+
+customerSignatureLine.addEventListener('click', () => {
+  showModal(customerModal);
+  resizeCanvas(signatureCanvasCustomer);
+});
+clearCustomerCanvasBtn.addEventListener('click', () => {
+  ctxCustomer.clearRect(0, 0, signatureCanvasCustomer.width, signatureCanvasCustomer.height);
+});
+cancelCustomerSignatureBtn.addEventListener('click', () => {
+  ctxCustomer.clearRect(0, 0, signatureCanvasCustomer.width, signatureCanvasCustomer.height);
+  hideModal(customerModal);
+});
+saveCustomerSignatureBtn.addEventListener('click', () => {
+  customerSignatureImg.src = signatureCanvasCustomer.toDataURL();
+  customerSignatureImg.classList.remove('hidden');
+  customerSignaturePlaceholder.classList.add('hidden');
+  hideModal(customerModal);
+  saveCustomerInfo();
+});
+
+// ----------------------------------------------------------------
+// INSPECTOR SIGNATURE LOGIC (with localStorage)
+// ----------------------------------------------------------------
+const inspectorModal = document.getElementById('inspectorModal'),
+      inspectorSignatureLine = document.getElementById('inspectorSignatureLine'),
+      inspectorSignatureImg = document.getElementById('inspectorSignatureImg'),
+      inspectorSignaturePlaceholder = document.getElementById('inspectorSignaturePlaceholder'),
+      clearInspectorCanvasBtn = document.getElementById('clearInspectorCanvas'),
+      cancelInspectorSignatureBtn = document.getElementById('cancelInspectorSignature'),
+      saveInspectorSignatureBtn = document.getElementById('saveInspectorSignature');
+
+inspectorSignatureLine.addEventListener('click', () => {
+  showModal(inspectorModal);
+  resizeCanvas(signatureCanvasInspector);
+});
+clearInspectorCanvasBtn.addEventListener('click', () => {
+  ctxInspector.clearRect(0, 0, signatureCanvasInspector.width, signatureCanvasInspector.height);
+});
+cancelInspectorSignatureBtn.addEventListener('click', () => {
+  ctxInspector.clearRect(0, 0, signatureCanvasInspector.width, signatureCanvasInspector.height);
+  hideModal(inspectorModal);
+});
+saveInspectorSignatureBtn.addEventListener('click', () => {
+  inspectorSignatureImg.src = signatureCanvasInspector.toDataURL();
+  inspectorSignatureImg.classList.remove('hidden');
+  inspectorSignaturePlaceholder.classList.add('hidden');
+  hideModal(inspectorModal);
+});
+
+// ----------------------------------------------------------------
+// LOCAL STORAGE FOR INSPECTOR (Name & Signature)
+// ----------------------------------------------------------------
+const inspectorSelect = document.getElementById('inspectorSelect'),
+      inspectorDateInput = document.getElementById('inspectorDate'),
+      saveInspectorInfoBtn = document.getElementById('saveInspectorInfo');
+
+saveInspectorInfoBtn.addEventListener('click', () => {
+  const inspectorChoice = inspectorSelect.value || '',
+        signatureData = (!inspectorSignatureImg.classList.contains('hidden')) ? inspectorSignatureImg.src : '';
+  try {
+    localStorage.setItem('inspectorChoice', inspectorChoice);
+    localStorage.setItem('inspectorSignature', signatureData);
+    alert('Inspector information saved locally!');
+  } catch (e) {
+    console.error('Local storage error:', e);
   }
+});
 
-  function draw(evt, ctx, canvas) {
-    if (!isDrawing) return;
-    const pos = getPointerPosition(evt, canvas);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-    x = pos.x;
-    y = pos.y;
-  }
-
-  function stopDrawing() {
-    isDrawing = false;
-  }
-
-  function setupCanvasInteractions(canvas, ctx) {
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#000';
-    canvas.addEventListener('mousedown', e => startDrawing(e, ctx, canvas));
-    canvas.addEventListener('mousemove', e => draw(e, ctx, canvas));
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-    canvas.addEventListener('touchstart', e => { e.preventDefault(); startDrawing(e, ctx, canvas); }, { passive: false });
-    canvas.addEventListener('touchmove', e => { e.preventDefault(); draw(e, ctx, canvas); }, { passive: false });
-    canvas.addEventListener('touchend', stopDrawing);
-  }
-
-  // Modal handling
-  function showModal(modal) {
-    modal.style.display = 'block';
-    setTimeout(() => { modal.style.opacity = '1'; }, 10);
-    document.body.style.overflow = 'hidden'; // Prevent background scroll
-  }
-  function hideModal(modal) {
-    modal.style.opacity = '0';
-    setTimeout(() => { modal.style.display = 'none'; document.body.style.overflow = 'auto'; }, 300);
-  }
-  document.addEventListener('keydown', e => {
-    if (e.key === "Escape") {
-      hideModal(document.getElementById('customerModal'));
-      hideModal(document.getElementById('inspectorModal'));
-    }
-  });
-
-  // Format date from YYYY-MM-DD to "Month Day, Year"
-  function formatDate(inputDate) {
-    if (!inputDate) return "";
-    const date = new Date(inputDate + "T00:00:00");
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  }
-
-  // ----------------------------------------------------------------
-  // Initialize signature canvases
-  // ----------------------------------------------------------------
-  const signatureCanvasCustomer = document.getElementById('signatureCanvasCustomer'),
-        ctxCustomer = signatureCanvasCustomer.getContext('2d'),
-        signatureCanvasInspector = document.getElementById('signatureCanvasInspector'),
-        ctxInspector = signatureCanvasInspector.getContext('2d');
-
-  setupCanvasInteractions(signatureCanvasCustomer, ctxCustomer);
-  setupCanvasInteractions(signatureCanvasInspector, ctxInspector);
-
-  // Re-adjust canvases on window resize for responsiveness
-  window.addEventListener('resize', () => {
-    resizeCanvas(signatureCanvasCustomer);
-    resizeCanvas(signatureCanvasInspector);
-  });
-
-  // ----------------------------------------------------------------
-  // CUSTOMER SIGNATURE LOGIC
-  // ----------------------------------------------------------------
-  const customerModal = document.getElementById('customerModal'),
-        customerSignatureLine = document.getElementById('customerSignatureLine'),
-        customerSignatureImg = document.getElementById('customerSignatureImg'),
-        customerSignaturePlaceholder = document.getElementById('customerSignaturePlaceholder'),
-        clearCustomerCanvasBtn = document.getElementById('clearCustomerCanvas'),
-        cancelCustomerSignatureBtn = document.getElementById('cancelCustomerSignature'),
-        saveCustomerSignatureBtn = document.getElementById('saveCustomerSignature');
-
-  customerSignatureLine.addEventListener('click', () => {
-    showModal(customerModal);
-    resizeCanvas(signatureCanvasCustomer);
-  });
-  clearCustomerCanvasBtn.addEventListener('click', () => ctxCustomer.clearRect(0, 0, signatureCanvasCustomer.width, signatureCanvasCustomer.height));
-  cancelCustomerSignatureBtn.addEventListener('click', () => {
-    ctxCustomer.clearRect(0, 0, signatureCanvasCustomer.width, signatureCanvasCustomer.height);
-    hideModal(customerModal);
-  });
-  saveCustomerSignatureBtn.addEventListener('click', () => {
-    customerSignatureImg.src = signatureCanvasCustomer.toDataURL();
-    customerSignatureImg.classList.remove('hidden');
-    customerSignaturePlaceholder.classList.add('hidden');
-    hideModal(customerModal);
-  });
-
-  // ----------------------------------------------------------------
-  // INSPECTOR SIGNATURE LOGIC
-  // ----------------------------------------------------------------
-  const inspectorModal = document.getElementById('inspectorModal'),
-        inspectorSignatureLine = document.getElementById('inspectorSignatureLine'),
-        inspectorSignatureImg = document.getElementById('inspectorSignatureImg'),
-        inspectorSignaturePlaceholder = document.getElementById('inspectorSignaturePlaceholder'),
-        clearInspectorCanvasBtn = document.getElementById('clearInspectorCanvas'),
-        cancelInspectorSignatureBtn = document.getElementById('cancelInspectorSignature'),
-        saveInspectorSignatureBtn = document.getElementById('saveInspectorSignature');
-
-  inspectorSignatureLine.addEventListener('click', () => {
-    showModal(inspectorModal);
-    resizeCanvas(signatureCanvasInspector);
-  });
-  clearInspectorCanvasBtn.addEventListener('click', () => ctxInspector.clearRect(0, 0, signatureCanvasInspector.width, signatureCanvasInspector.height));
-  cancelInspectorSignatureBtn.addEventListener('click', () => {
-    ctxInspector.clearRect(0, 0, signatureCanvasInspector.width, signatureCanvasInspector.height);
-    hideModal(inspectorModal);
-  });
-  saveInspectorSignatureBtn.addEventListener('click', () => {
-    inspectorSignatureImg.src = signatureCanvasInspector.toDataURL();
+// On load, retrieve any previously stored data
+window.addEventListener('load', () => {
+  // Inspector info
+  const savedInspectorChoice = localStorage.getItem('inspectorChoice');
+  const savedInspectorSignature = localStorage.getItem('inspectorSignature');
+  if (savedInspectorChoice) inspectorSelect.value = savedInspectorChoice;
+  if (savedInspectorSignature) {
+    inspectorSignatureImg.src = savedInspectorSignature;
     inspectorSignatureImg.classList.remove('hidden');
     inspectorSignaturePlaceholder.classList.add('hidden');
-    hideModal(inspectorModal);
-  });
+  }
+  // Customer info
+  loadCustomerInfo();
+});
 
-  // ----------------------------------------------------------------
-  // LOCAL STORAGE FOR INSPECTOR (Name & Signature)
-  // ----------------------------------------------------------------
-  const inspectorSelect = document.getElementById('inspectorSelect'),
-        inspectorDateInput = document.getElementById('inspectorDate'),
-        saveInspectorInfoBtn = document.getElementById('saveInspectorInfo');
+// ----------------------------------------------------------------
+// LOCAL STORAGE FOR CUSTOMER (Name, Company, Date, Signature)
+// ----------------------------------------------------------------
+const customerNameInput = document.getElementById('customerName'),
+      customerCompanyInput = document.getElementById('customerCompany'),
+      customerDateInput = document.getElementById('customerDate');
 
-  saveInspectorInfoBtn.addEventListener('click', () => {
-    const inspectorChoice = inspectorSelect.value || '',
-          signatureData = (!inspectorSignatureImg.classList.contains('hidden')) ? inspectorSignatureImg.src : '';
-    try {
-      localStorage.setItem('inspectorChoice', inspectorChoice);
-      localStorage.setItem('inspectorSignature', signatureData);
-      alert('Inspector information saved locally!');
-    } catch (e) {
-      console.error('Local storage error:', e);
-    }
-  });
-  window.addEventListener('load', () => {
-    const savedInspectorChoice = localStorage.getItem('inspectorChoice'),
-          savedInspectorSignature = localStorage.getItem('inspectorSignature');
-    if (savedInspectorChoice) inspectorSelect.value = savedInspectorChoice;
-    if (savedInspectorSignature) {
-      inspectorSignatureImg.src = savedInspectorSignature;
-      inspectorSignatureImg.classList.remove('hidden');
-      inspectorSignaturePlaceholder.classList.add('hidden');
-    }
-  });
+function loadCustomerInfo() {
+  const storedCustomerName = localStorage.getItem('customerName');
+  const storedCustomerCompany = localStorage.getItem('customerCompany');
+  const storedCustomerDate = localStorage.getItem('customerDate');
+  const storedCustomerSignature = localStorage.getItem('customerSignature');
 
-  // ----------------------------------------------------------------
-  // PRINT / SAVE AS PDF LOGIC
-  // ----------------------------------------------------------------
-  const customerNameInput = document.getElementById('customerName'),
-        customerCompanyInput = document.getElementById('customerCompany'),
-        customerDateInput = document.getElementById('customerDate'),
-        printCustomerName = document.getElementById('printCustomerName'),
-        printCustomerCompany = document.getElementById('printCustomerCompany'),
-        printCustomerDate = document.getElementById('printCustomerDate'),
-        printCustomerSignature = document.getElementById('printCustomerSignature'),
-        printInspectorName = document.getElementById('printInspectorName'),
-        printInspectorDate = document.getElementById('printInspectorDate'),
-        printInspectorSignature = document.getElementById('printInspectorSignature'),
-        inspectorCompanyInput = document.getElementById('inspectorCompany'),
-        printInspectorCompany = document.getElementById('printInspectorCompany'),
-        printPageBtn = document.getElementById('printPageBtn');
+  if (storedCustomerName) customerNameInput.value = storedCustomerName;
+  if (storedCustomerCompany) customerCompanyInput.value = storedCustomerCompany;
+  if (storedCustomerDate) customerDateInput.value = storedCustomerDate;
+  if (storedCustomerSignature) {
+    customerSignatureImg.src = storedCustomerSignature;
+    customerSignatureImg.classList.remove('hidden');
+    customerSignaturePlaceholder.classList.add('hidden');
+  }
+}
 
-  printPageBtn.addEventListener('click', () => {
-    // Set Customer Details
-    printCustomerCompany.textContent = customerCompanyInput.value || "";
-    printCustomerName.textContent = customerNameInput.value || "";
-    printCustomerDate.textContent = customerDateInput.value ? formatDate(customerDateInput.value) : "";
-    printCustomerSignature.src = (!customerSignatureImg.classList.contains('hidden')) ? customerSignatureImg.src : "";
-    printCustomerSignature.style.display = "block"; // Always reserve space
+function saveCustomerInfo() {
+  try {
+    localStorage.setItem('customerName', customerNameInput.value);
+    localStorage.setItem('customerCompany', customerCompanyInput.value);
+    localStorage.setItem('customerDate', customerDateInput.value);
+    const signatureData = (!customerSignatureImg.classList.contains('hidden')) ? customerSignatureImg.src : '';
+    localStorage.setItem('customerSignature', signatureData);
+  } catch (e) {
+    console.error('Local storage error:', e);
+  }
+}
 
-    // Set Inspector Details
-    printInspectorCompany.textContent = inspectorCompanyInput.value;
-    printInspectorName.textContent = inspectorSelect.value || "";
-    printInspectorDate.textContent = inspectorDateInput.value ? formatDate(inspectorDateInput.value) : "";
-    printInspectorSignature.src = (!inspectorSignatureImg.classList.contains('hidden')) ? inspectorSignatureImg.src : "";
-    printInspectorSignature.style.display = "block";
+// Save as user types
+customerNameInput.addEventListener('input', saveCustomerInfo);
+customerCompanyInput.addEventListener('input', saveCustomerInfo);
+customerDateInput.addEventListener('input', saveCustomerInfo);
 
-    window.print();
-  });
+// ----------------------------------------------------------------
+// PRINT / SAVE AS PDF LOGIC
+// ----------------------------------------------------------------
+const printCustomerName = document.getElementById('printCustomerName'),
+      printCustomerCompany = document.getElementById('printCustomerCompany'),
+      printCustomerDate = document.getElementById('printCustomerDate'),
+      printCustomerSignature = document.getElementById('printCustomerSignature'),
+      printInspectorName = document.getElementById('printInspectorName'),
+      printInspectorDate = document.getElementById('printInspectorDate'),
+      printInspectorSignature = document.getElementById('printInspectorSignature'),
+      inspectorCompanyInput = document.getElementById('inspectorCompany'),
+      printInspectorCompany = document.getElementById('printInspectorCompany'),
+      printPageBtn = document.getElementById('printPageBtn');
+
+printPageBtn.addEventListener('click', () => {
+  // Update Customer details in print view
+  printCustomerCompany.textContent = customerCompanyInput.value || "";
+  printCustomerName.textContent = customerNameInput.value || "";
+  printCustomerDate.textContent = customerDateInput.value ? formatDate(customerDateInput.value) : "";
+  printCustomerSignature.src = (!customerSignatureImg.classList.contains('hidden')) ? customerSignatureImg.src : "";
+  printCustomerSignature.style.display = "block"; // ensures a placeholder area for the signature
+
+  // Update Inspector details in print view
+  printInspectorCompany.textContent = inspectorCompanyInput.value;
+  printInspectorName.textContent = inspectorSelect.value || "";
+  printInspectorDate.textContent = inspectorDateInput.value ? formatDate(inspectorDateInput.value) : "";
+  printInspectorSignature.src = (!inspectorSignatureImg.classList.contains('hidden')) ? inspectorSignatureImg.src : "";
+  printInspectorSignature.style.display = "block";
+
+  window.print();
+});
 </script>
 </body>
 </html>
